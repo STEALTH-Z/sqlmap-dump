@@ -1,0 +1,61 @@
+In a previous tutorial on hacking databases, I showed you how to find online databases and then how to enumerate the databases, tables, and columns. In this guide, we'll now exfiltrate, extract, remove—whatever term you prefer—the data from an online database.
+
+As MySQL, the open source database now owned by Oracle, is probably the most widely used back-end database of online websites, we'll use it as an example. Similar techniques can be used for Microsoft's SQL Server, Oracle, DB2, Postgresql, etc.
+Hacking Databases with Sqlmap
+
+We will be using sqlmap, once again, which is a versatile and powerful tool for hacking databases. It has been used in a number of successful and highly publicized hacks by Anonymous members and other hackers against web-based databases.
+
+Any self-respecting (and for that matter, self-loathing) hacker should be familiar with sqlmap. As such, I want to spend a few tutorials showing you its power and capabilities. Here we will focus on exfiltration, but it can do so much more.
+
+Extracting Data with Sqlmap
+
+In this tutorial, we'll work on how to extract the data after we've found the database and enumerated the database. Since the data in the database server is the hacker's "Golden Fleece," the ability to find and extract it is among the most critical skills for an effective hacker.
+
+Step 1: Fire Up Sqlmap in BackTrack
+
+Let's open up sqlmap in BackTrack and look at the help screen by typing:
+
+./sqlmap.py -h
+
+If you need help finding sqlmap, refer back to my previous tutorial.
+
+As we can see, the capabilities and options for using sqlmap are numerous.
+
+In my previous tutorial, we had used a URL to target the database by using the -u switch (such as ./sqlmap.py -u "http://www.someURL.com), but notice that in the screenshot above we have the option to do a lot more.
+
+We can use a direct connect (-d), the logfile (-l), a bulkfile (-m), HTTP requests (-r), use googledorks (-g), or use a configuration .ini file (-c). For now, we will continue to use the URL option, or -u option, in our attack here, but we will explore the other attack options in future guides.
+
+If we scroll down the help screen a bit, we will see another section called "Enumeration." These are the options available to enumerate various objects in the target database. In our previous example, we had enumerated; first, the databases (-dbs); then, the tables (--tables); and finally, the columns (--columns).
+
+Notice, though, that we can also enumerate the users and password hashes, among many other database objects.
+
+Step 2: Enumerate the Database Users
+
+Let's take a look at enumerating the database users. If we can get these, we might be able to connect directly to the database (we are using a vulnerability in the web application here) even when and if the database administrator notices and repairs this security vulnerability in the website. We simply type:
+
+./sqlmap.py -u "http://webscantest.com/datastore/search_get_by_id.php?id=4" --users
+
+Now, run this command to get a list of users.
+
+As you can see in the above screenshot, sqlmap told us that the DBMS is MySQL, the web application technology is PHP 5.3.3, the webserver is Apache, and finally, where I highlighted, it was able to enumerate one user 'scanme'@'%'.
+
+In MySQL syntax, this means that the user's name is "scanme" and they can login from (@) the following host or IP. In this case, the user "scanme" can login from any host or IP, as the database admin has used the wildcard "%" which means "any or none".
+
+If the database admin had used a IP address here, such as 'scanme@192.168.1.100', the user "scanme" would only be able to login from that IP address. In this case, scanme can login from any IP making it much easier for us to hack the database in the future using scanme's account, as it will allow scanme to login from any IP address. So, we can use scanme's credentials from any IP address and get into the database "legitimately".
+Step 3: Enumerate Tables & Columns
+
+As I'm sure you remember from my earlier sqlmap tutorial , we were able to enumerate the databases, the tables, and the columns for the website http://webscantest.com, such as we see below.
+
+When we enumerated the columns on the order table, we could see that this table includes some VERY valuable information, most importantly the credit card numbers used for orders on that website. It is that info that we want to extract to our system.
+
+Step 4: Extract the Data
+
+If you look back on my past MySQL guide, you will see that I showed you how to backup data from a MySQL database by using the sqldump command. This is one of the many ways a database admin can back-up there data in MySQL. What we will do here is essentially the same, but here we will use the sqlmap tool to produce nearly the same result.
+
+The critical parts here are; (1) use the keyword --dump; (2) then define the database (-D); and (3) define the table (-T) we want to extract the data from with a statement such as this:
+
+./sqlmap.py -u "http://www.webscantest.com/datastore/search_get_by_id.php?id=4" --dump -D scanme -T orders
+
+When we run this command, we get results like that below where the data from the database scanme's table orders has been "dumped" to a comma separated values file (CSV) and has been stored at:
+
+/pentest/databse/sqlmap/output/http://www.webscantest.com/dump/scanme/orders.csv
